@@ -27,6 +27,9 @@ public class Manual {
     @Column(length = 20)
     private String category;
 
+    @Column(name = "category_name", length = 50)
+    private String categoryName;
+
     private int difficulty;
 
     @Column(name = "is_premium")

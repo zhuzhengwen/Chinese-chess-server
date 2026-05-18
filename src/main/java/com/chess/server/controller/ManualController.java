@@ -50,6 +50,11 @@ public class ManualController {
         }).orElse(ApiResponse.fail(404, "棋谱不存在"));
     }
 
+    @PostMapping("/import")
+    public ApiResponse<List<Manual>> importManuals(@RequestBody List<Manual> manuals) {
+        return ApiResponse.success(manualService.importManuals(manuals));
+    }
+
     private boolean isCurrentUserVip() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !auth.isAuthenticated() || "anonymousUser".equals(auth.getPrincipal())) {

@@ -26,6 +26,19 @@ public class ManualService {
         });
     }
 
+    public List<Manual> importManuals(List<Manual> manuals) {
+        manuals.forEach(m -> {
+            if (m.getContent() != null && !m.getContent().isEmpty() && m.getTotalMoves() == 0) {
+                try {
+                    com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                    java.util.List<?> list = mapper.readValue(m.getContent(), java.util.List.class);
+                    m.setTotalMoves(list.size());
+                } catch (Exception ignored) {}
+            }
+        });
+        return manualRepository.saveAll(manuals);
+    }
+
     public List<Manual> getRecommended() {
         return manualRepository.findTop6ByOrderByViewCountDesc();
     }
