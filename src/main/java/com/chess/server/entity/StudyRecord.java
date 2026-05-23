@@ -1,27 +1,25 @@
 package com.chess.server.entity;
 
-import lombok.Data;
-
-import javax.persistence.*;
+import com.baomidou.mybatisplus.annotation.*;
 import java.time.LocalDateTime;
 
-@Data
-@Entity
-@Table(name = "study_records")
+@TableName("study_records")
 public class StudyRecord {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @TableId(type = IdType.AUTO)
     private Long id;
-
-    @Column(name = "user_id", nullable = false)
     private Long userId;
-
-    @Column(name = "manual_id", nullable = false)
     private Long manualId;
+    private Integer progress;
+    private LocalDateTime studiedAt;
 
-    private int progress = 0;
-
-    @Column(name = "studied_at")
-    private LocalDateTime studiedAt = LocalDateTime.now();
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    public Long getUserId() { return userId; }
+    public void setUserId(Long userId) { this.userId = userId; }
+    public Long getManualId() { return manualId; }
+    public void setManualId(Long manualId) { this.manualId = manualId; }
+    public Integer getProgress() { return progress; }
+    public void setProgress(Integer progress) { this.progress = progress; }
+    public LocalDateTime getStudiedAt() { return studiedAt; }
+    public void setStudiedAt(LocalDateTime studiedAt) { this.studiedAt = studiedAt; }
 }

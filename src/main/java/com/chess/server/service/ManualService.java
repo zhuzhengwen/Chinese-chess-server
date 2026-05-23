@@ -1,65 +1,53 @@
 package com.chess.server.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.chess.server.entity.Manual;
-import com.chess.server.repository.ManualRepository;
-import lombok.RequiredArgsConstructor;
+import com.chess.server.mapper.ManualMapper;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
 
 @Service
-@RequiredArgsConstructor
 public class ManualService {
 
-    private final ManualRepository manualRepository;
+    private final ManualMapper manualMapper;
+
+    public ManualService(ManualMapper manualMapper) {
+        this.manualMapper = manualMapper;
+    }
 
     public List<Manual> search(String category, String keyword, Integer difficulty) {
-        String cat = (category != null && !category.isEmpty()) ? category : null;
-        String kw = (keyword != null && !keyword.isEmpty()) ? keyword : null;
-        return manualRepository.search(cat, difficulty, kw);
-    }
-
-    public Optional<Manual> getById(Long id) {
-        return manualRepository.findById(id).map(m -> {
-            m.setViewCount(m.getViewCount() + 1);
-            return manualRepository.save(m);
-        });
-    }
-
-    public List<Manual> importManuals(List<Manual> manuals) {
-        manuals.forEach(m -> {
-            if (m.getContent() != null && !m.getContent().isEmpty() && m.getTotalMoves() == 0) {
-                try {
-                    com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-                    java.util.List<?> list = mapper.readValue(m.getContent(), java.util.List.class);
-                    m.setTotalMoves(list.size());
-                } catch (Exception ignored) {}
-            }
-        });
-        return manualRepository.saveAll(manuals);
+        QueryWrapper<Manual> qw = new QueryWrapper<>();
+        if (category != null && !category.isEmpty()) qw.eq("category", category);
+        if (difficulty != null) qw.eq("difficulty", difficulty);
+        if (keyword != null && !keyword.isEmpty()) qw.like("title", keyword);
+        return manualMapper.selectList(qw);
     }
 
     public List<Manual> getRecommended() {
-        return manualRepository.findTop6ByOrderByViewCountDesc();
+        return manualMapper.selectList(new QueryWrapper<Manual>().orderByDesc("view_count").last("LIMIT 6"));
+    }
+
+    public Manual getById(Long id) {
+        Manual m = manualMapper.selectById(id);
+        if (m != null) {
+            m.setViewCount(m.getViewCount() == null ? 1 : m.getViewCount() + 1);
+            manualMapper.updateById(m);
+        }
+        return m;
     }
 
     public List<Map<String, Object>> getCategories() {
-        List<Map<String, Object>> categories = new ArrayList<>();
-        String[][] cats = {
-            {"cat1", "四大名谱", "48"},
-            {"cat2", "中局名局", "36"},
-            {"cat3", "残局精华", "52"},
-            {"cat4", "开局布阵", "44"},
-            {"cat5", "名家对局", "28"},
-            {"cat6", "古典残局", "60"}
+        List<Map<String, Object>> list = new ArrayList<>();
+        Object[][] cats = {
+            {"cat1", "四大名谱", 48}, {"cat2", "中局名局", 36}, {"cat3", "残局精华", 52},
+            {"cat4", "开局布阵", 44}, {"cat5", "名家对局", 28}, {"cat6", "古典残局", 60}
         };
-        for (String[] c : cats) {
+        for (Object[] c : cats) {
             Map<String, Object> map = new LinkedHashMap<>();
-            map.put("id", c[0]);
-            map.put("name", c[1]);
-            map.put("count", Integer.parseInt(c[2]));
-            categories.add(map);
+            map.put("id", c[0]); map.put("name", c[1]); map.put("count", c[2]);
+            list.add(map);
         }
-        return categories;
+        return list;
     }
 }

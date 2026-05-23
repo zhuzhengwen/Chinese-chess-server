@@ -1,62 +1,62 @@
 package com.chess.server.controller;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.chess.server.dto.ApiResponse;
 import com.chess.server.entity.Favorite;
 import com.chess.server.entity.Manual;
 import com.chess.server.entity.User;
-import com.chess.server.repository.FavoriteRepository;
-import com.chess.server.repository.ManualRepository;
-import com.chess.server.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
+import com.chess.server.mapper.FavoriteMapper;
+import com.chess.server.mapper.ManualMapper;
 import org.springframework.web.bind.annotation.*;
 
-import java.security.Principal;
+import javax.servlet.http.HttpServletRequest;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/favorites")
-@RequiredArgsConstructor
 public class FavoriteController {
 
-    private final FavoriteRepository favoriteRepository;
-    private final ManualRepository manualRepository;
-    private final UserRepository userRepository;
+    private final FavoriteMapper favoriteMapper;
+    private final ManualMapper manualMapper;
+
+    public FavoriteController(FavoriteMapper favoriteMapper, ManualMapper manualMapper) {
+        this.favoriteMapper = favoriteMapper;
+        this.manualMapper = manualMapper;
+    }
 
     @GetMapping
-    public ApiResponse<List<Manual>> list(Principal principal) {
-        Long userId = getUserId(principal);
-        if (userId == null) return ApiResponse.fail(401, "未登录");
-        List<Long> ids = favoriteRepository.findByUserId(userId).stream()
-                .map(Favorite::getManualId).collect(Collectors.toList());
-        return ApiResponse.success(manualRepository.findAllById(ids));
+    public ApiResponse<List<Manual>> list(HttpServletRequest req) {
+        User user = (User) req.getAttribute("currentUser");
+        if (user == null) return ApiResponse.fail(401, "未登录");
+        List<Long> ids = favoriteMapper.selectList(new QueryWrapper<Favorite>().eq("user_id", user.getId()))
+                .stream().map(Favorite::getManualId).collect(Collectors.toList());
+        if (ids.isEmpty()) return ApiResponse.success(new ArrayList<>());
+        return ApiResponse.success(manualMapper.selectBatchIds(ids));
     }
 
     @PostMapping
-    public ApiResponse<Favorite> add(@RequestBody Map<String, Object> body, Principal principal) {
-        Long userId = getUserId(principal);
-        if (userId == null) return ApiResponse.fail(401, "未登录");
+    public ApiResponse<Favorite> add(@RequestBody Map<String, Object> body, HttpServletRequest req) {
+        User user = (User) req.getAttribute("currentUser");
+        if (user == null) return ApiResponse.fail(401, "未登录");
         Long manualId = Long.valueOf(body.get("manualId").toString());
-        if (favoriteRepository.existsByUserIdAndManualId(userId, manualId)) {
-            return ApiResponse.fail(400, "已收藏");
-        }
+        Long count = favoriteMapper.selectCount(new QueryWrapper<Favorite>()
+                .eq("user_id", user.getId()).eq("manual_id", manualId));
+        if (count > 0) return ApiResponse.fail(400, "已收藏");
         Favorite f = new Favorite();
-        f.setUserId(userId);
-        f.setManualId(manualId);
-        return ApiResponse.success(favoriteRepository.save(f));
+        f.setUserId(user.getId()); f.setManualId(manualId); f.setCreatedAt(LocalDateTime.now());
+        favoriteMapper.insert(f);
+        return ApiResponse.success(f);
     }
 
     @DeleteMapping("/{manualId}")
-    public ApiResponse<Void> remove(@PathVariable Long manualId, Principal principal) {
-        Long userId = getUserId(principal);
-        if (userId == null) return ApiResponse.fail(401, "未登录");
-        favoriteRepository.deleteByUserIdAndManualId(userId, manualId);
+    public ApiResponse<Void> remove(@PathVariable Long manualId, HttpServletRequest req) {
+        User user = (User) req.getAttribute("currentUser");
+        if (user == null) return ApiResponse.fail(401, "未登录");
+        favoriteMapper.delete(new QueryWrapper<Favorite>().eq("user_id", user.getId()).eq("manual_id", manualId));
         return ApiResponse.success();
-    }
-
-    private Long getUserId(Principal principal) {
-        if (principal == null) return null;
-        return userRepository.findByPhone(principal.getName()).map(User::getId).orElse(null);
     }
 }

@@ -1,8 +1,5 @@
 package com.chess.server.dto;
 
-import lombok.Data;
-
-@Data
 public class ApiResponse<T> {
     private int code;
     private String message;
@@ -29,4 +26,8 @@ public class ApiResponse<T> {
     public static <T> ApiResponse<T> fail(int code, String message) {
         return new ApiResponse<>(code, message, null);
     }
+
+    public int getCode() { return code; }
+    public String getMessage() { return message; }
+    public T getData() { return data; }
 }

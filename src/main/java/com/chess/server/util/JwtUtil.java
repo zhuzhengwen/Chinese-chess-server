@@ -28,16 +28,16 @@ public class JwtUtil {
         return Keys.hmacShaKeyFor(keyBytes);
     }
 
-    public String generateToken(String phone) {
+    public String generateToken(String username) {
         return Jwts.builder()
-                .setSubject(phone)
+                .setSubject(username)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + expiration))
                 .signWith(getKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
 
-    public String getPhoneFromToken(String token) {
+    public String getUsernameFromToken(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(getKey())
                 .build()

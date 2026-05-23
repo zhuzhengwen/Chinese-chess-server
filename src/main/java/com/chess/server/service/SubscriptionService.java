@@ -1,8 +1,8 @@
 package com.chess.server.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.chess.server.entity.Subscription;
-import com.chess.server.repository.SubscriptionRepository;
-import lombok.RequiredArgsConstructor;
+import com.chess.server.mapper.SubscriptionMapper;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -10,11 +10,15 @@ import java.time.LocalDateTime;
 import java.util.*;
 
 @Service
-@RequiredArgsConstructor
 public class SubscriptionService {
 
-    private final SubscriptionRepository subscriptionRepository;
+    private final SubscriptionMapper subscriptionMapper;
     private final UserService userService;
+
+    public SubscriptionService(SubscriptionMapper subscriptionMapper, UserService userService) {
+        this.subscriptionMapper = subscriptionMapper;
+        this.userService = userService;
+    }
 
     public Subscription subscribe(Long userId, String plan) {
         LocalDateTime now = LocalDateTime.now();
@@ -24,22 +28,20 @@ public class SubscriptionService {
             case "MONTH":    expireDate = now.plusDays(30);   price = new BigDecimal("18.00");  break;
             case "YEAR":     expireDate = now.plusDays(365);  price = new BigDecimal("98.00");  break;
             case "LIFETIME": expireDate = now.plusYears(100); price = new BigDecimal("298.00"); break;
-            default: throw new IllegalArgumentException("Unknown plan: " + plan);
+            default: throw new RuntimeException("未知套餐：" + plan);
         }
         Subscription sub = new Subscription();
-        sub.setUserId(userId);
-        sub.setPlan(plan);
-        sub.setStartDate(now);
-        sub.setExpireDate(expireDate);
-        sub.setPrice(price);
-        sub.setStatus("ACTIVE");
-        subscriptionRepository.save(sub);
-        userService.updateVipStatus(userId, plan, expireDate);
+        sub.setUserId(userId); sub.setPlan(plan); sub.setStartDate(now);
+        sub.setExpireDate(expireDate); sub.setPrice(price); sub.setStatus("ACTIVE");
+        subscriptionMapper.insert(sub);
+        userService.updateVip(userId, plan, expireDate);
         return sub;
     }
 
-    public Optional<Subscription> getLatest(Long userId) {
-        return subscriptionRepository.findTopByUserIdOrderByExpireDateDesc(userId);
+    public Subscription getLatest(Long userId) {
+        return subscriptionMapper.selectOne(
+            new QueryWrapper<Subscription>().eq("user_id", userId).orderByDesc("expire_date").last("LIMIT 1")
+        );
     }
 
     public List<Map<String, Object>> getPlans() {
@@ -51,11 +53,8 @@ public class SubscriptionService {
         };
         for (Object[] d : data) {
             Map<String, Object> map = new LinkedHashMap<>();
-            map.put("id", d[0]);
-            map.put("name", d[1]);
-            map.put("price", d[2]);
-            map.put("duration", d[3]);
-            map.put("features", d[4]);
+            map.put("id", d[0]); map.put("name", d[1]); map.put("price", d[2]);
+            map.put("duration", d[3]); map.put("features", d[4]);
             plans.add(map);
         }
         return plans;

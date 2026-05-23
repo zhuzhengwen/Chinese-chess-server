@@ -1,40 +1,49 @@
 package com.chess.server.controller;
 
-import com.chess.server.dto.ApiResponse;
-import com.chess.server.dto.LoginRequest;
-import com.chess.server.dto.UserDTO;
+import com.chess.server.dto.*;
+import com.chess.server.entity.User;
 import com.chess.server.service.UserService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
-import java.security.Principal;
+import javax.servlet.http.HttpServletRequest;
 
 @RestController
 @RequestMapping("/api/auth")
-@RequiredArgsConstructor
 public class AuthController {
 
     private final UserService userService;
 
+    public AuthController(UserService userService) {
+        this.userService = userService;
+    }
+
     @PostMapping("/login")
-    public ApiResponse<UserDTO> login(@RequestBody LoginRequest req) {
-        if (!req.isMockLogin() && (req.getPhone() == null || req.getPhone().isEmpty())) {
-            return ApiResponse.fail(400, "手机号不能为空");
+    public ApiResponse<LoginResponse> login(@RequestBody LoginRequest req) {
+        try {
+            return ApiResponse.success(userService.login(req));
+        } catch (RuntimeException e) {
+            return ApiResponse.fail(400, e.getMessage());
         }
-        UserDTO dto = userService.login(req);
-        return ApiResponse.success(dto);
     }
 
     @PostMapping("/register")
     public ApiResponse<UserDTO> register(@RequestBody LoginRequest req) {
-        UserDTO dto = userService.login(req);
-        return ApiResponse.success(dto);
+        try {
+            return ApiResponse.success(userService.register(req));
+        } catch (RuntimeException e) {
+            return ApiResponse.fail(400, e.getMessage());
+        }
+    }
+
+    @PostMapping("/reset-password")
+    public ApiResponse<Void> resetPassword(@RequestBody LoginRequest req) {
+        return ApiResponse.success();
     }
 
     @GetMapping("/profile")
-    public ApiResponse<UserDTO> profile(Principal principal) {
-        if (principal == null) return ApiResponse.fail(401, "未登录");
-        UserDTO dto = userService.getUserByPhone(principal.getName());
-        return ApiResponse.success(dto);
+    public ApiResponse<UserDTO> profile(HttpServletRequest req) {
+        User user = (User) req.getAttribute("currentUser");
+        if (user == null) return ApiResponse.fail(401, "未登录");
+        return ApiResponse.success(UserService.toDTO(user));
     }
 }
